@@ -11,19 +11,59 @@ const io = new Server(server, {
     cors: { origin: "*" } 
 });
 
+// Variável para guardar quem está jogando
+let players = {
+    p1: null, // Guardará o socket.id do Jogador 1 (Esquerda)
+    p2: null  // Guardará o socket.id do Jogador 2 (Direita)
+};
+
+// Nossa Fila de espera (FIFO)
+let spectatorsQueue = [];
+
 // O evento 'connection' é disparado toda vez que um novo navegador se conecta
 io.on('connection', (socket) => {
     console.log(`Novo jogador conectado! ID: ${socket.id}`);
 
+    // --- LÓGICA DE ATRIBUIÇÃO E FILA ---
+    if (!players.p1) {
+        players.p1 = socket.id;
+        console.log(`${socket.id} assumiu a Raquete 1 (Esquerda)`);
+        socket.emit('playerRole', 'p1'); 
+    } else if (!players.p2) {
+        players.p2 = socket.id;
+        console.log(`${socket.id} assumiu a Raquete 2 (Direita)`);
+        socket.emit('playerRole', 'p2');
+    } else {
+        // Se as vagas estão cheias, entra para o final da fila
+        spectatorsQueue.push(socket.id);
+        console.log(`${socket.id} entrou para a fila de espectadores. Posição: ${spectatorsQueue.length}`);
+        socket.emit('playerRole', 'spectator');
+    }
+
     // Escuta as mensagens 'move' vindas EXCLUSIVAMENTE deste jogador
     socket.on('move', (data) => {
         console.log(`O jogador ${socket.id} enviou:`, data);
-
     });
 
-    // Se o jogador fechar a aba do navegador, esse evento é chamado
+    //--- LÓGICA DE DESCONEXÃO E PROMOÇÃO (Liberando a vaga) ---
     socket.on('disconnect', () => {
-        console.log(`Jogador desconectado: ${socket.id}`);
+        console.log(`Usuário desconectado: ${socket.id}`);
+        // Se quem saiu era um dos jogadores, liberamos a vaga para o próximo
+        if (players.p1 === socket.id) {
+            players.p1 = null;
+            console.log('A vaga do Jogador 1 está livre novamente.');
+            promoverEspectador('p1'); // Tenta promover alguém da fila
+
+        } else if (players.p2 === socket.id) {
+            players.p2 = null;
+            console.log('A vaga do Jogador 2 está livre novamente.');
+            promoverEspectador('p2'); // Tenta promover alguém da fila
+
+        } else {
+            // Se um espectador desistir e fechar a aba, precisamos tirá-lo da fila
+            // para não tentar promover um "fantasma" depois
+            spectatorsQueue = spectatorsQueue.filter(id => id !== socket.id);
+        }
     });
 });
 
@@ -52,3 +92,18 @@ const PORTA = 3000;
 server.listen(PORTA, () => {
     console.log(`Servidor do Pong rodando na porta ${PORTA} 🚀`);
 });
+
+// Função auxiliar para gerenciar a fila
+function promoverEspectador(vaga) {
+    if (spectatorsQueue.length > 0) {
+        // O método shift() remove o primeiro elemento do array e nos devolve ele
+        const novoJogadorId = spectatorsQueue.shift(); 
+        
+        // Atribui a vaga ao ex-espectador
+        players[vaga] = novoJogadorId; 
+        console.log(`Espectador ${novoJogadorId} foi promovido para a vaga ${vaga.toUpperCase()}!`);
+        
+        // Mensagem DIRECIONADA: Avisa especificamente este usuário que ele subiu de cargo
+        io.to(novoJogadorId).emit('playerRole', vaga); 
+    }
+}
