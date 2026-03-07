@@ -15,6 +15,12 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
     console.log(`Novo jogador conectado! ID: ${socket.id}`);
 
+    // Escuta as mensagens 'move' vindas EXCLUSIVAMENTE deste jogador
+    socket.on('move', (data) => {
+        console.log(`O jogador ${socket.id} enviou:`, data);
+
+    });
+
     // Se o jogador fechar a aba do navegador, esse evento é chamado
     socket.on('disconnect', () => {
         console.log(`Jogador desconectado: ${socket.id}`);
