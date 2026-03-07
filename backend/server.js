@@ -27,6 +27,27 @@ io.on('connection', (socket) => {
     });
 });
 
+// 1. As regras do "Mundo" pertencem ao servidor
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 400;
+const PADDLE_HEIGHT = 100;
+
+// 2. O Estado Global do Jogo (A Verdade Absoluta)
+let gameState = {
+    // Não precisamos do 'x' das raquetes, pois elas só movem para cima e para baixo no eixo 'y'
+    p1: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
+    p2: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
+    ball: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 }
+};
+
+// 3. O GAME LOOP (O Coração do Jogo)
+// O setInterval executa uma função repetidamente. 
+// 1000 milissegundos / 60 = ~16.6ms (Isso nos dá 60 quadros por segundo)
+setInterval(() => {
+    // A função io.emit() é um Broadcast: ela grita a mensagem para TODOS os sockets conectados ao mesmo tempo!
+    io.emit('gameState', gameState);
+}, 1000 / 60);
+
 const PORTA = 3000;
 server.listen(PORTA, () => {
     console.log(`Servidor do Pong rodando na porta ${PORTA} 🚀`);

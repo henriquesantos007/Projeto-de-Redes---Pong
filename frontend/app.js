@@ -9,15 +9,20 @@ const PADDLE_WIDTH = 10;
 const PADDLE_HEIGHT = 100;
 const BALL_SIZE = 10;
 
-// 3. Criando o "Estado Local" inicial do jogo (depois, o servidor que vai ditar isso)
-let gameState = {
-    p1: { x: 20, y: canvas.height / 2 - PADDLE_HEIGHT / 2 },
-    p2: { x: canvas.width - 30, y: canvas.height / 2 - PADDLE_HEIGHT / 2 },
-    ball: { x: canvas.width / 2, y: canvas.height / 2 }
-};
+// O estado começa vazio, esperando as ordens do servidor
+let stateDoServidor = null;
 
-// 4. A função que pinta tudo na tela
+// Toda vez que o servidor gritar "gameState" (60 vezes por segundo), nós atualizamos e desenhamos!
+socket.on('gameState', (state) => {
+    stateDoServidor = state;
+    draw(); 
+});
+
+// 3. A função que pinta tudo na tela
 function draw() {
+    // Se ainda não recebemos a primeira foto do servidor, não tenta desenhar para não dar erro
+    if (!stateDoServidor) return;
+
     // Limpa a tela inteira com a cor preta a cada quadro
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -25,14 +30,14 @@ function draw() {
     // Cor do "pincel" para os elementos do jogo
     ctx.fillStyle = 'white';
 
-    // Desenha a Raquete 1 (Esquerda)
-    ctx.fillRect(gameState.p1.x, gameState.p1.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+    // Desenha a Raquete 1 (Esquerda) - O 'x' é fixo, o 'y' vem do servidor!
+    ctx.fillRect(20, stateDoServidor.p1.y, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-    // Desenha a Raquete 2 (Direita)
-    ctx.fillRect(gameState.p2.x, gameState.p2.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+    // Desenha a Raquete 2 (Direita) - O 'x' é fixo perto da borda
+    ctx.fillRect(canvas.width - 30, stateDoServidor.p2.y, PADDLE_WIDTH, PADDLE_HEIGHT);
 
     // Desenha a Bola
-    ctx.fillRect(gameState.ball.x, gameState.ball.y, BALL_SIZE, BALL_SIZE);
+    ctx.fillRect(stateDoServidor.ball.x, stateDoServidor.ball.y, BALL_SIZE, BALL_SIZE);
     
     // Desenha a linha pontilhada do meio (a rede)
     ctx.setLineDash([5, 15]);
