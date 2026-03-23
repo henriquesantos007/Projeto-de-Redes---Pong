@@ -20,26 +20,41 @@ socket.on('gameState', (state) => {
 
 // 3. A função que pinta tudo na tela
 function draw() {
-    // Se ainda não recebemos a primeira foto do servidor, não tenta desenhar para não dar erro
     if (!stateDoServidor) return;
 
-    // Limpa a tela inteira com a cor preta a cada quadro
+    // Limpa a tela
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Cor do "pincel" para os elementos do jogo
+    // Cor dos elementos
     ctx.fillStyle = 'white';
 
-    // Desenha a Raquete 1 (Esquerda) - O 'x' é fixo, o 'y' vem do servidor!
-    ctx.fillRect(20, stateDoServidor.p1.y, PADDLE_WIDTH, PADDLE_HEIGHT);
-
-    // Desenha a Raquete 2 (Direita) - O 'x' é fixo perto da borda
-    ctx.fillRect(canvas.width - 30, stateDoServidor.p2.y, PADDLE_WIDTH, PADDLE_HEIGHT);
-
-    // Desenha a Bola
+    // 🔹 TEXTO NO TOPO CENTRAL
+    ctx.font = '30px Arial';           // tamanho e fonte
+    ctx.textAlign = 'center';          // centraliza horizontalmente
+    
+    // Raquete esquerda, se o jogador for o player 1, ele pinta a raquete de verde
+    if(socket.id == stateDoServidor.p1.id){
+        ctx.fillStyle = 'green';
+        ctx.fillRect(20, stateDoServidor.p1.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+        ctx.fillStyle = 'white';  
+    }else {
+        ctx.fillRect(20, stateDoServidor.p1.y, PADDLE_WIDTH, PADDLE_HEIGHT);    
+    }
+    
+    // Raquete direita, se o jogador for o player 2, a raquete ficará verde.
+    if (socket.id == stateDoServidor.p2.id){
+        ctx.fillStyle = 'green';
+        ctx.fillRect(canvas.width - 30, stateDoServidor.p2.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+        ctx.fillStyle = 'white';
+    } else {
+        ctx.fillRect(canvas.width - 30, stateDoServidor.p2.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+    }
+    
+    // Bola
     ctx.fillRect(stateDoServidor.ball.x, stateDoServidor.ball.y, BALL_SIZE, BALL_SIZE);
     
-    // Desenha a linha pontilhada do meio (a rede)
+    // Linha do meio
     ctx.setLineDash([5, 15]);
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, 0);
@@ -54,14 +69,14 @@ draw();
 
 // Escuta quando o jogador APERTA a tecla
 document.addEventListener('keydown', (event) => {
-    // Filtramos para enviar mensagens APENAS se for a setinha para cima ou para baixo
+    // Filtramos para enviar mensagens APENAS se for a seta para cima ou para baixo
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         // Envia a mensagem para o servidor pelo socket
         socket.emit('move', { key: event.key, isPressed: true });
     }
 });
 
-// Escuta quando o jogador SOLTA a tecla
+// Escuta quando o jogador LIBERA a tecla
 document.addEventListener('keyup', (event) => {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         socket.emit('move', { key: event.key, isPressed: false });

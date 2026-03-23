@@ -14,7 +14,7 @@ const io = new Server(server, {
     cors: { origin: "*" } 
 });
 
-// Variável para guardar quem está jogando
+// Variável para guardar quem está jogando no momento
 let players = {
     p1: null, // Guardará o socket.id do Jogador 1 (Esquerda)
     p2: null  // Guardará o socket.id do Jogador 2 (Direita)
@@ -34,8 +34,8 @@ const PADDLE_HEIGHT = 100;
 // O Estado Global do Jogo (A Verdade Absoluta)
 let gameState = {
     // Não precisamos do 'x' das raquetes, pois elas só movem para cima e para baixo no eixo 'y'
-    p1: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
-    p2: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
+    p1: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, id: players.p1},
+    p2: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, id: players.p2 },
     ball: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 }
 };
 
@@ -58,7 +58,7 @@ function resetBall() {
     ballSpeed.x *= -1; 
 }
 
-// Nossa Fila de espera (FIFO)
+// Nossa Fila de espera composta por espectadores (FIFO)
 let spectatorsQueue = [];
 
 // O evento 'connection' é disparado toda vez que um novo navegador se conecta
@@ -68,10 +68,12 @@ io.on('connection', (socket) => {
     // --- LÓGICA DE ATRIBUIÇÃO E FILA ---
     if (!players.p1) {
         players.p1 = socket.id;
+        gameState.p1.id = players.p1;
         console.log(`${socket.id} assumiu a Raquete 1 (Esquerda)`);
-        socket.emit('playerRole', 'p1'); 
+        socket.emit('playerRole', 'p1');
     } else if (!players.p2) {
         players.p2 = socket.id;
+        gameState.p2.id = players.p2;
         console.log(`${socket.id} assumiu a Raquete 2 (Direita)`);
         socket.emit('playerRole', 'p2');
     } else {
@@ -104,11 +106,13 @@ io.on('connection', (socket) => {
         // Se quem saiu era um dos jogadores, liberamos a vaga para o próximo
         if (players.p1 === socket.id) {
             players.p1 = null;
+            gameState.p1.id = players.p1;
             console.log('A vaga do Jogador 1 está livre novamente.');
             promoverEspectador('p1'); // Tenta promover alguém da fila
 
         } else if (players.p2 === socket.id) {
             players.p2 = null;
+            gameState.p2.id = players.p2;
             console.log('A vaga do Jogador 2 está livre novamente.');
             promoverEspectador('p2'); // Tenta promover alguém da fila
 
