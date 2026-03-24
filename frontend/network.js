@@ -1,6 +1,4 @@
-// frontend/network.js
-
-// Tenta conectar no servidor que criamos no passo 1
+// Tenta conectar ao servidor
 const socket = io();
 
 socket.on('connect', () => {

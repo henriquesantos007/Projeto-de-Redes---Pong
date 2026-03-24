@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -9,7 +8,7 @@ app.use(express.static('../frontend'));
 
 const server = http.createServer(app);
 
-// Configura o Socket.io e permite que o frontend (rodando em outra porta/pasta) se conecte
+// Configura o Socket.io e permite que o frontend rodando em outro computador se conecte
 const io = new Server(server, {
     cors: { origin: "*" } 
 });
@@ -20,13 +19,13 @@ let players = {
     p2: null  // Guardará o socket.id do Jogador 2 (Direita)
 };
 
-// Aceleradores: Guardam o estado das teclas de cada jogador
+// Inputs: Guardam o estado das teclas de cada jogador
 const inputs = {
     p1: { up: false, down: false },
     p2: { up: false, down: false }
 };
 
-// As regras do "Mundo" pertencem ao servidor
+// As regras do jogo pertencem ao servidor
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 400;
 const PADDLE_HEIGHT = 100;
@@ -34,7 +33,7 @@ const PADDLE_HEIGHT = 100;
 // Nossa Fila de espera composta por espectadores (FIFO)
 let spectatorsQueue = [];
 
-// O Estado Global do Jogo (A Verdade Absoluta)
+// O Estado Global do Jogo, ou seja, a posição da bola e a posição dos paddles
 let gameState = {
     // Não precisamos do 'x' das raquetes, pois elas só movem para cima e para baixo no eixo 'y'
     p1: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2},
@@ -65,7 +64,7 @@ function resetBall() {
 io.on('connection', (socket) => {
     console.log(`Novo jogador conectado! ID: ${socket.id}`);
 
-    // --- LÓGICA DE ATRIBUIÇÃO E FILA ---
+    // --- Lógica de atribuição de jogadores e preenchimento da fila de espectadores ---
     if (!players.p1) {
         players.p1 = socket.id;
 
@@ -83,7 +82,7 @@ io.on('connection', (socket) => {
         atualizarPosicoesDaFila()
     }
 
-    // Escuta as mensagens 'move' vindas EXCLUSIVAMENTE deste jogador
+    // Escuta as mensagens 'move' vindas EXCLUSIVAMENTE dos jogadores
     socket.on('move', (data) => {
         // Descobre quem enviou a mensagem
         let playerKey = null;
