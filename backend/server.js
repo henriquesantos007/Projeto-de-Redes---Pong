@@ -190,8 +190,19 @@ setInterval(() => {
         resetBall();
     }
 
-    // Transmite o novo estado para todo mundo
-    io.emit('gameState', gameState);
+    // --- DEGRADAÇÃO DE REDE (TESTANDO O GARGALO DO TCP) ---
+    const SIMULATE_LATENCY_MS = 150; // Atraso de 150ms
+    const PACKET_LOSS_RATE = 0.0;    // 10% de chance de perder o pacote
+
+    // Simulando a perda de pacote (se cair nos 10%, não envia o frame)
+    if (Math.random() > PACKET_LOSS_RATE) {
+        
+        // Simulando a latência (atrasa o envio) transmitindo para todos
+        setTimeout(() => {
+            io.emit('gameState', gameState);
+        }, SIMULATE_LATENCY_MS);
+        
+    }
 }, 1000 / 60);
 
 const PORTA = 3000;
