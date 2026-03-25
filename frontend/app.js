@@ -9,6 +9,7 @@ const LERP_FACTOR = 0.15; // Suavidade do movimento (0.1 a 0.3)
 
 // Estados do Servidor (Autoridade)
 let stateDoServidor = null;
+let isNetworkDegraded = false;
 let role = null;
 let specpos = null;
 let score = { p1: 0, p2: 0 };
@@ -32,6 +33,10 @@ function lerp(start, end, factor) {
 socket.on('gameState', (state) => {
     stateDoServidor = state;
     if (state.ballSpeed !== undefined) ballSpeedDisplay = state.ballSpeed;
+});
+
+socket.on('networkStatus', (status) => {
+    isNetworkDegraded = status;
 });
 
 socket.on('playerRole', (r) => {
@@ -78,7 +83,7 @@ function renderLoop() {
         ctx.fillRect(stateDoServidor.ball.x, stateDoServidor.ball.y, BALL_SIZE, BALL_SIZE);
         ctx.restore();
     }
-    
+
     drawBall(clientState.ball.x, clientState.ball.y);
 
     // D. HUD E OVERLAYS
@@ -177,6 +182,16 @@ function drawHUD() {
     ctx.fillText(`PING: ${ping}ms`, 10, canvas.height - 10);
     ctx.fillText(`VEL: ${Math.round(ballSpeedDisplay * 10)}%`, 10, canvas.height - 25);
 
+    // --- AVISO DE REDE NO CENTRO DA TELA ---
+    ctx.textAlign = 'center';
+    if (isNetworkDegraded) {
+        ctx.fillStyle = '#ff4444'; // Vermelho
+        ctx.fillText('⚠️ REDE DEGRADADA (TCP STRESS) [N]', canvas.width / 2, canvas.height - 10);
+    } else {
+        ctx.fillStyle = '#00ff88'; // Verde
+        ctx.fillText('🌐 REDE PERFEITA [N]', canvas.width / 2, canvas.height - 10);
+    }
+
     if (role === 'spectator' && specpos) {
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffd700';
@@ -238,6 +253,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'r' && (role === 'p1' || role === 'p2')) {
         socket.emit('requestRestart');
         gameOverData = null;
+    }
+
+    if (e.key.toLowerCase() === 'n') {
+        socket.emit('toggleNetwork'); // Qualquer um (até espectador) pode ativar/desativar
     }
 });
 

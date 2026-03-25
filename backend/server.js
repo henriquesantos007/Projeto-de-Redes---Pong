@@ -42,6 +42,7 @@ let score = { p1: 0, p2: 0 };
 let gameOver = false;
 let winner = null;
 let gameRunning = false; // Só roda quando os 2 jogadores estão conectados
+let simulateBadNetwork = false
 
 let gameState = {
     p1:   { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
@@ -141,6 +142,17 @@ io.on('connection', (socket) => {
             resetGame();
             checkGameRunning();
         }
+    });
+
+    // Envia o status atual da rede para quem acabou de entrar
+    socket.emit('networkStatus', simulateBadNetwork);
+
+    // ── Gatilho de Degradação de Rede ──
+    socket.on('toggleNetwork', () => {
+        simulateBadNetwork = !simulateBadNetwork;
+        console.log(`Status da Rede Simulação: ${simulateBadNetwork ? 'RUIM (Com Perdas e Latência)' : 'PERFEITA'}`);
+        // Avisa todos os clientes para atualizarem a interface
+        io.emit('networkStatus', simulateBadNetwork); 
     });
 
     // ── Desconexão ──
@@ -259,20 +271,20 @@ setInterval(() => {
         }
     }
 
-    // ─── DEGRADAÇÃO DE REDE SIMULADA ──────────────────────────────────────────
-    // Constantes para controle durante a sua apresentação
-    const SIMULATE_LATENCY_MS = 150; // Atraso na entrega (Latência)
-    const PACKET_LOSS_RATE = 0.15;   // 15% de chance de perder o pacote
+    // ─── EMISSÃO DE DADOS E DEGRADAÇÃO DE REDE ───────────────────────────────
+    const SIMULATE_LATENCY_MS = 150; 
+    const PACKET_LOSS_RATE = 0.15;   
 
-    // Simulando a perda de pacote: se o número aleatório for maior que 0.15, o pacote passa.
-    // Se for menor, ele é sumariamente ignorado (simulando um descarte na rede).
-    if (Math.random() > PACKET_LOSS_RATE) {
-        
-        // Simulando a latência: atrasamos artificialmente a entrega do pacote
-        setTimeout(() => {
-            io.emit('gameState', { ...gameState, ballSpeed: currentSpeed });
-        }, SIMULATE_LATENCY_MS);
-        
+    if (simulateBadNetwork) {
+        // MODO CAOS ATIVADO: Aplica perda de pacotes e latência
+        if (Math.random() > PACKET_LOSS_RATE) {
+            setTimeout(() => {
+                io.emit('gameState', { ...gameState, ballSpeed: currentSpeed });
+            }, SIMULATE_LATENCY_MS);
+        }
+    } else {
+        // MODO REDE PERFEITA: Envia o pacote imediatamente
+        io.emit('gameState', { ...gameState, ballSpeed: currentSpeed });
     }
 
 }, 1000 / 60);
