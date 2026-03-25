@@ -215,6 +215,40 @@
                 panel.textContent = '⏳ AGUARDANDO NA FILA…';
             }
         });
+
+        // Mostra/esconde painel de espectador e atualiza a etiqueta do topo
+        socket.on('playerRole', (r) => {
+            const panel = document.getElementById('spectatorPanel');
+            const btn   = document.getElementById('restartBtn');
+            
+            // Captura a etiqueta lá do cabeçalho
+            const badge = document.querySelector('.role-badge');
+
+            if (r === 'spectator') {
+                // Lógica para Espectador
+                panel.style.display = 'block';
+                btn.style.display   = 'none';
+                
+                badge.textContent = '👁 ESPECTADOR';
+                badge.className = 'role-badge spec-badge'; // Aplica a cor amarela
+                
+            } else if (r === 'p1') {
+                // Lógica para Jogador 1
+                panel.style.display = 'none';
+                btn.style.display   = 'inline-block';
+                
+                badge.textContent = '🎮 JOGADOR 1';
+                badge.className = 'role-badge p1-badge'; // Aplica a cor verde
+                
+            } else if (r === 'p2') {
+                // Lógica para Jogador 2
+                panel.style.display = 'none';
+                btn.style.display   = 'inline-block';
+                
+                badge.textContent = '🎮 JOGADOR 2';
+                badge.className = 'role-badge p2-badge'; // Aplica a cor verde
+            }
+        });
     </script>
 </body>
 </html>
