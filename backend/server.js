@@ -249,7 +249,21 @@ setInterval(() => {
         }
     }
 
-    io.emit('gameState', { ...gameState, ballSpeed: currentSpeed });
+    // ─── DEGRADAÇÃO DE REDE SIMULADA ──────────────────────────────────────────
+    // Constantes para controle durante a sua apresentação
+    const SIMULATE_LATENCY_MS = 150; // Atraso na entrega (Latência)
+    const PACKET_LOSS_RATE = 0.15;   // 15% de chance de perder o pacote
+
+    // Simulando a perda de pacote: se o número aleatório for maior que 0.15, o pacote passa.
+    // Se for menor, ele é sumariamente ignorado (simulando um descarte na rede).
+    if (Math.random() > PACKET_LOSS_RATE) {
+        
+        // Simulando a latência: atrasamos artificialmente a entrega do pacote
+        setTimeout(() => {
+            io.emit('gameState', { ...gameState, ballSpeed: currentSpeed });
+        }, SIMULATE_LATENCY_MS);
+        
+    }
 
 }, 1000 / 60);
 
