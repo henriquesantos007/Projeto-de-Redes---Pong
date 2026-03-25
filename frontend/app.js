@@ -42,6 +42,10 @@ function draw() {
     ctx.textAlign = 'right'; // alinha à direita
     ctx.fillStyle = 'white';
 
+    // Exibição do RTT (Ping)
+    ctx.textAlign = 'left';
+    ctx.fillText(`Ping: ${typeof currentPing !== 'undefined' ? currentPing : 0}ms`, 10, 30);
+
     // Informação da posição da fila de espectadores
     if(specpos){
         ctx.fillText(`Posição na fila: ${specpos}`, canvas.width - 10, 30);

@@ -121,6 +121,12 @@ io.on('connection', (socket) => {
             atualizarPosicoesDaFila()
         }
     });
+
+    // --- Resposta do servidor para o Ping realizado pelo cliente
+    socket.on('ping', (timestamp) => {
+        // Apenas devolve o mesmo timestamp imediatamente
+        socket.emit('pong', timestamp);
+    });
 });
 
 
