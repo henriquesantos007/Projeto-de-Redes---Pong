@@ -6,6 +6,7 @@ const PADDLE_WIDTH = 10;
 const PADDLE_HEIGHT = 100;
 const BALL_SIZE = 10;
 const LERP_FACTOR = 0.15; // Suavidade do movimento (0.1 a 0.3)
+let useInterpolation = true;
 
 // Estados do Servidor (Autoridade)
 let stateDoServidor = null;
@@ -58,10 +59,19 @@ socket.on('gameOver', (w) => { gameOverData = w; });
 function renderLoop() {
     // A. INTERPOLAÇÃO: Desliza o estado visual para o estado do servidor
     if (stateDoServidor) {
-        clientState.p1.y = lerp(clientState.p1.y, stateDoServidor.p1.y, LERP_FACTOR);
-        clientState.p2.y = lerp(clientState.p2.y, stateDoServidor.p2.y, LERP_FACTOR);
-        clientState.ball.x = lerp(clientState.ball.x, stateDoServidor.ball.x, LERP_FACTOR);
-        clientState.ball.y = lerp(clientState.ball.y, stateDoServidor.ball.y, LERP_FACTOR);
+        if (useInterpolation) {
+            // LIGADO: Desliza o estado visual suavemente (mitiga o lag)
+            clientState.p1.y = lerp(clientState.p1.y, stateDoServidor.p1.y, LERP_FACTOR);
+            clientState.p2.y = lerp(clientState.p2.y, stateDoServidor.p2.y, LERP_FACTOR);
+            clientState.ball.x = lerp(clientState.ball.x, stateDoServidor.ball.x, LERP_FACTOR);
+            clientState.ball.y = lerp(clientState.ball.y, stateDoServidor.ball.y, LERP_FACTOR);
+        } else {
+            // DESLIGADO: Pula instantaneamente para a posição bruta do servidor (mostra o lag real)
+            clientState.p1.y = stateDoServidor.p1.y;
+            clientState.p2.y = stateDoServidor.p2.y;
+            clientState.ball.x = stateDoServidor.ball.x;
+            clientState.ball.y = stateDoServidor.ball.y;
+        }
     }
 
     // B. LIMPEZA E FUNDO
@@ -192,6 +202,17 @@ function drawHUD() {
         ctx.fillText('🌐 REDE PERFEITA [N]', canvas.width / 2, canvas.height - 10);
     }
 
+    // --- STATUS DA INTERPOLAÇÃO ---
+    ctx.textAlign = 'left';
+    if (useInterpolation) {
+        ctx.fillStyle = '#00ff88'; // Verde
+        ctx.fillText(`INTERPOLAÇÃO: ON [I]`, 10, canvas.height - 40);
+    } else {
+        ctx.fillStyle = '#ff4444'; // Vermelho
+        ctx.fillText(`INTERPOLAÇÃO: OFF [I]`, 10, canvas.height - 40);
+    }
+    // ------------------------------------
+
     if (role === 'spectator' && specpos) {
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffd700';
@@ -257,6 +278,11 @@ document.addEventListener('keydown', (e) => {
 
     if (e.key.toLowerCase() === 'n') {
         socket.emit('toggleNetwork'); // Qualquer um (até espectador) pode ativar/desativar
+    }
+
+    
+    if (e.key.toLowerCase() === 'i') {
+        useInterpolation = !useInterpolation;
     }
 });
 

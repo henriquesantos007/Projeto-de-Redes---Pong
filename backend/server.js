@@ -44,6 +44,9 @@ let winner = null;
 let gameRunning = false; // Só roda quando os 2 jogadores estão conectados
 let simulateBadNetwork = false
 
+const SIMULATE_LATENCY_MS = 150; // Atraso base da simulação (Ping)
+const PACKET_LOSS_RATE = 0.15;   // 15% de chance de perder pacote
+
 let gameState = {
     p1:   { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
     p2:   { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
@@ -177,8 +180,28 @@ io.on('connection', (socket) => {
         checkGameRunning();
     });
 
-    // ── Ping / RTT ──
-    socket.on('ping', (ts) => socket.emit('pong', ts));
+    // ── Ping / RTT com Simulação de RTO do TCP ──
+    socket.on('ping', (ts) => {
+        if (simulateBadNetwork) {
+            // A latência base que configuramos (150ms)
+            let delayTime = SIMULATE_LATENCY_MS; 
+
+            // Se o pacote cair na probabilidade de perda (15%), 
+            // simulamos o RTO (Retransmission Timeout) do TCP.
+            // O pacote não some, ele sofre o atraso da retransmissão do Sistema Operacional.
+            if (Math.random() <= PACKET_LOSS_RATE) {
+                delayTime += 300; // Adiciona 300ms de "penalidade" simulando o reenvio
+            }
+
+            setTimeout(() => {
+                socket.emit('pong', ts);
+            }, delayTime);
+
+        } else {
+            // Modo Rede Perfeita: Responde na velocidade real do cabo/localhost
+            socket.emit('pong', ts);
+        }
+    });
 });
 
 // ─── Game Loop ────────────────────────────────────────────────────────────────
