@@ -17,6 +17,7 @@ Para mitigar problemas de dessincronização (*Desync*) e evitar trapaças por p
 
 * **Backend:** Node.js, Express, Socket.io
 * **Frontend:** HTML5 (Canvas API), CSS3, JavaScript Vanilla (Puro)
+* **VLAN:** Radmin
 
 ## 📁 Estrutura do Repositório
 
@@ -47,9 +48,10 @@ O terminal exibirá a mensagem de que o servidor está rodando na porta 3000 e a
 
 ### Executando o Cliente (Frontend)
 Com o terminal do servidor rodando em segundo plano, abra o jogo no navegador:
-1. Navegue até a pasta frontend pelo seu gerenciador de arquivos.
-2. Dê um duplo clique no arquivo index.html para abri-lo no seu navegador web.
-3. Para simular o Multiplayer: Abra uma nova aba ou janela anônima e acesse o mesmo arquivo index.html.
-4. Para testar a fila de espera: Abra uma terceira aba. O terminal do servidor informará que este novo nó entrou como espectador. Feche a aba do Jogador 1 ou 2 para ver a promoção automática acontecendo em tempo real.
+1. Abra o seu radmin;
+2. Copie o seu IP do radmin;
+3. Cole o IP e adicione :3000 ao fim do IP e carregue a página web;
+4. Para simular o Multiplayer: Abra uma nova aba ou janela anônima e acesse o mesmo IP em conjunto com a porta 3000;
+5. Para testar a fila de espera: Abra uma terceira aba. O terminal do servidor informará que este novo nó entrou como espectador. Feche a aba do Jogador 1 ou 2 para ver a promoção automática acontecendo em tempo real.
 ---
 Desenvolvido para fins acadêmicos e estudo de protocolos de comunicação em tempo real.
