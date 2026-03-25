@@ -22,7 +22,7 @@ const BALL_SIZE      = 10;
 const P1_X           = 20;
 const P2_X           = CANVAS_WIDTH - 30;
 
-const WINNING_SCORE      = 7;    // Pontos para vencer
+const WINNING_SCORE      = 5;    // Pontos para vencer
 const BALL_SPEED_INITIAL = 4;    // Velocidade inicial da bola
 const BALL_SPEED_MAX     = 12;   // Velocidade máxima da bola
 const BALL_SPEED_INCREMENT = 0.3; // Quanto aumenta por rebatida
@@ -162,11 +162,15 @@ io.on('connection', (socket) => {
         if (players.p1 === socket.id) {
             players.p1 = null;
             inputs.p1  = { up: false, down: false };
+
+            resetGame();
             promoverEspectador('p1');
 
         } else if (players.p2 === socket.id) {
             players.p2 = null;
             inputs.p2  = { up: false, down: false };
+
+            resetGame();
             promoverEspectador('p2');
 
         } else {
