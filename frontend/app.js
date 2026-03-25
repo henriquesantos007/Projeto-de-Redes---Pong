@@ -64,6 +64,15 @@ function renderLoop() {
     // C. DESENHO DOS ELEMENTOS (Usando clientState para ser fluido)
     drawPaddle(20, clientState.p1.y, 'p1');
     drawPaddle(canvas.width - 30, clientState.p2.y, 'p2');
+
+    // -- FANTASMA DO SERVIDOR (Para apresentação) --
+    if (stateDoServidor) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'; // Bolinha branca bem transparente
+        ctx.fillRect(stateDoServidor.ball.x, stateDoServidor.ball.y, BALL_SIZE, BALL_SIZE);
+        ctx.restore();
+    }
+    
     drawBall(clientState.ball.x, clientState.ball.y);
 
     // D. HUD E OVERLAYS
