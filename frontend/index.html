@@ -2,17 +2,219 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Pong Multiplayer - Redes</title>
+    <title>PONG — Redes de Computadores</title>
     <style>
-        body { background-color: #222; color: white; text-align: center; }
-        canvas { background-color: black; border: 2px solid white; margin-top: 20px;}
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --green:  #00ff88;
+            --red:    #ff4455;
+            --yellow: #ffd700;
+            --bg:     #0a0a0f;
+            --panel:  rgba(255,255,255,0.04);
+            --border: rgba(255,255,255,0.08);
+        }
+
+        body {
+            background: var(--bg);
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* ── Cabeçalho ── */
+        header {
+            width: 100%;
+            max-width: 840px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 8px 8px;
+        }
+
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            color: var(--green);
+            text-shadow: 0 0 18px rgba(0,255,136,0.5);
+        }
+
+        /* ── Badge de papel ── */
+        #roleOverlay {
+            display: flex;
+            align-items: center;
+        }
+
+        .role-badge {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 2px;
+            padding: 5px 14px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+        .p1-badge  { background: rgba(0,255,136,0.12); border: 1px solid var(--green); color: var(--green); }
+        .p2-badge  { background: rgba(0,255,136,0.12); border: 1px solid var(--green); color: var(--green); }
+        .spec-badge{ background: rgba(255,215,0,0.10);  border: 1px solid var(--yellow); color: var(--yellow); }
+
+        /* ── Canvas wrapper ── */
+        .canvas-wrapper {
+            position: relative;
+            line-height: 0;
+        }
+
+        canvas {
+            display: block;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 0 40px rgba(0,255,136,0.05), 0 0 1px rgba(255,255,255,0.1);
+        }
+
+        /* ── Painel inferior ── */
+        footer {
+            width: 100%;
+            max-width: 840px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 8px 6px;
+            gap: 12px;
+        }
+
+        .info-panel {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 1px;
+        }
+
+        .info-item span {
+            color: rgba(255,255,255,0.55);
+        }
+
+        /* ── Painel do espectador ── */
+        #spectatorPanel {
+            display: none;
+            background: rgba(255, 215, 0, 0.06);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 4px;
+            padding: 8px 18px;
+            font-size: 13px;
+            color: var(--yellow);
+            letter-spacing: 1px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.6; }
+        }
+
+        /* ── Botão reiniciar ── */
+        #restartBtn {
+            display: none;
+            background: transparent;
+            border: 1px solid var(--green);
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            letter-spacing: 3px;
+            padding: 8px 22px;
+            border-radius: 3px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        #restartBtn:hover {
+            background: rgba(0,255,136,0.12);
+            box-shadow: 0 0 12px rgba(0,255,136,0.25);
+        }
+
+        /* ── Legenda de controles ── */
+        .controls-hint {
+            font-size: 11px;
+            color: rgba(255,255,255,0.18);
+            letter-spacing: 1px;
+            text-align: center;
+            padding-bottom: 6px;
+        }
+
+        /* ── Responsividade básica ── */
+        @media (max-width: 860px) {
+            canvas { width: 100vw; height: auto; }
+        }
     </style>
 </head>
 <body>
-    <h1>Pong Client-Server</h1>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <header>
+        <div class="game-title">PONG</div>
+        <div id="roleOverlay">
+            <span class="role-badge spec-badge">👁 ESPECTADOR</span>
+        </div>
+    </header>
+
+    <div class="canvas-wrapper">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <footer>
+        <div class="info-panel">
+            <div class="info-item">VENCE <span>7 PTS</span></div>
+            <div class="info-item">MOVER <span>↑ ↓</span></div>
+            <div class="info-item">RESTART <span>R</span></div>
+        </div>
+
+        <div id="spectatorPanel">
+            ⏳ AGUARDANDO NA FILA…
+        </div>
+
+        <button id="restartBtn">⟳ REINICIAR</button>
+    </footer>
+
+    <div class="controls-hint">Pong Multiplayer · Redes de Computadores I</div>
+
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="network.js"></script>
-    <script src="app.js"></script> </body>
+    <script src="app.js"></script>
+
+    <script>
+        // Mostra/esconde painel de espectador conforme o papel
+        socket.on('playerRole', (r) => {
+            const panel = document.getElementById('spectatorPanel');
+            const btn   = document.getElementById('restartBtn');
+
+            if (r === 'spectator') {
+                panel.style.display = 'block';
+                btn.style.display   = 'none';
+            } else {
+                panel.style.display = 'none';
+                btn.style.display   = 'inline-block';
+            }
+        });
+
+        // Atualiza texto do painel com posição na fila
+        socket.on('queuePosition', (pos) => {
+            const panel = document.getElementById('spectatorPanel');
+            if (pos) {
+                panel.textContent = `⏳ FILA: #${pos} — AGUARDE SUA VEZ`;
+            } else {
+                panel.textContent = '⏳ AGUARDANDO NA FILA…';
+            }
+        });
+    </script>
 </body>
 </html>

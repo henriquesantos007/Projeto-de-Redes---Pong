@@ -3,7 +3,7 @@ const socket = io();
 let currentPing = 0;
 
 socket.on('connect', () => {
-    console.log('Conectado ao servidor com sucesso! Meu ID é:', socket.id);
+    console.log('Conectado ao servidor! ID:', socket.id);
 
     // Dispara um ping a cada 1 segundo para testar o RTT
     setInterval(() => {
