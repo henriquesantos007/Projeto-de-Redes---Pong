@@ -84,7 +84,14 @@ function resetGame() {
 }
 
 function checkGameRunning() {
+    // O jogo só roda se não acabou e se os dois jogadores estão presentes
     gameRunning = !gameOver && players.p1 !== null && players.p2 !== null;
+    
+    // Descobre se está faltando algum jogador
+    const isWaiting = players.p1 === null || players.p2 === null;
+    
+    // Emite o status para TODO MUNDO (isso é o que faltava/estava falhando)
+    io.emit('waitingStatus', isWaiting);
 }
 
 // ─── Conexão ──────────────────────────────────────────────────────────────────
@@ -111,6 +118,9 @@ io.on('connection', (socket) => {
     if (gameOver && winner) socket.emit('gameOver', winner);
 
     checkGameRunning();
+
+    const isWaitingNow = players.p1 === null || players.p2 === null;
+    socket.emit('waitingStatus', isWaitingNow);
 
     // ── Movimento ──
     socket.on('move', (data) => {

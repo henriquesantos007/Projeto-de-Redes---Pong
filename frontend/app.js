@@ -14,6 +14,7 @@ let specpos = null;
 let score = { p1: 0, p2: 0 };
 let gameOverData = null;
 let ballSpeedDisplay = 4;
+let isWaitingOpponent = false; // Guarda se estamos esperando jogador
 
 // Estados Visuais do Cliente (Interpolados para suavidade)
 let clientState = {
@@ -37,6 +38,11 @@ socket.on('playerRole', (r) => {
     role = r;
     // Opcional: chamar funções de UI do index.html se existirem
     if (typeof updateRestartButton === 'function') updateRestartButton();
+});
+
+socket.on('waitingStatus', (status) => {
+    // vefica se ha pelo menos dois jogadores
+    isWaitingOpponent = status;
 });
 
 socket.on('queuePosition', (pos) => { specpos = pos; });
@@ -77,7 +83,11 @@ function renderLoop() {
 
     // D. HUD E OVERLAYS
     drawHUD();
-    if (gameOverData) drawGameOver(gameOverData);
+    if (gameOverData){
+        drawGameOver(gameOverData)
+    } else if (isWaitingOpponent) {
+        drawWaitingScreen();
+    }
 
     requestAnimationFrame(renderLoop);
 }
@@ -192,6 +202,29 @@ function drawGameOver(winnerKey) {
         ctx.font = 'bold 50px Arial';
         ctx.fillText(role === 'spectator' ? 'FIM DE JOGO' : 'DERROTA', canvas.width / 2, canvas.height / 2);
     }
+    ctx.restore();
+}
+
+function drawWaitingScreen() {
+    ctx.save();
+    
+    // Fundo semitransparente escuro (igual ao do Game Over)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Texto de "Aguardando Oponente"
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd700'; // Cor amarela (ou #00ff88 se preferir verde)
+    ctx.font = 'bold 30px "Share Tech Mono", monospace';
+    
+    // Adiciona o texto bem no centro
+    ctx.fillText('⏳ AGUARDANDO OPONENTE...', canvas.width / 2, canvas.height / 2);
+    
+    // Pequeno subtítulo abaixo
+    ctx.font = '16px "Share Tech Mono", monospace';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText('O jogo começará quando outro jogador conectar', canvas.width / 2, canvas.height / 2 + 40);
+    
     ctx.restore();
 }
 
