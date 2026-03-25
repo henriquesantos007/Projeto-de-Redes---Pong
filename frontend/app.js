@@ -1,135 +1,83 @@
-// ─── Canvas ───────────────────────────────────────────────────────────────────
+// ─── 1. CONFIGURAÇÃO DO CANVA E ESTADOS ───────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
-const ctx    = canvas.getContext('2d');
+const ctx = canvas.getContext('2d');
 
-// ─── Constantes visuais ───────────────────────────────────────────────────────
-const PADDLE_WIDTH  = 10;
+const PADDLE_WIDTH = 10;
 const PADDLE_HEIGHT = 100;
-const BALL_SIZE     = 10;
+const BALL_SIZE = 10;
+const LERP_FACTOR = 0.15; // Suavidade do movimento (0.1 a 0.3)
 
-// ─── Estado local ─────────────────────────────────────────────────────────────
+// Estados do Servidor (Autoridade)
 let stateDoServidor = null;
-let role    = null;   // 'p1' | 'p2' | 'spectator'
-let specpos = null;   // posição na fila
-let score   = { p1: 0, p2: 0 };
-let gameOverData  = null;  // null | 'p1' | 'p2'
-let youLost = false;
-let ballSpeedDisplay = 4; // valor visual da velocidade
+let role = null;
+let specpos = null;
+let score = { p1: 0, p2: 0 };
+let gameOverData = null;
+let ballSpeedDisplay = 4;
 
-// Animação de ponto
-let pointFlash = null; // { side: 'left'|'right', timer: 30 }
+// Estados Visuais do Cliente (Interpolados para suavidade)
+let clientState = {
+    p1: { y: 150 },
+    p2: { y: 150 },
+    ball: { x: 400, y: 200 }
+};
 
-// ─── Eventos do servidor ──────────────────────────────────────────────────────
+// Função de Interpolação Linear
+function lerp(start, end, factor) {
+    return start + (end - start) * factor;
+}
+
+// ─── 2. EVENTOS DE REDE (APENAS ATUALIZAM DADOS) ──────────────────────────────
 socket.on('gameState', (state) => {
     stateDoServidor = state;
     if (state.ballSpeed !== undefined) ballSpeedDisplay = state.ballSpeed;
-    draw();
 });
 
 socket.on('playerRole', (r) => {
     role = r;
-    youLost = false;
-
-    // Mostra/esconde botão de restart
-    updateRestartButton();
-    updateRoleOverlay();
+    // Opcional: chamar funções de UI do index.html se existirem
+    if (typeof updateRestartButton === 'function') updateRestartButton();
 });
 
-socket.on('queuePosition', (pos) => {
-    specpos = pos;
-});
+socket.on('queuePosition', (pos) => { specpos = pos; });
+socket.on('scoreUpdate', (s) => { score = s; });
+socket.on('gameOver', (w) => { gameOverData = w; });
 
-socket.on('scoreUpdate', (s) => {
-    score = s;
-});
-
-socket.on('gameOver', (w) => {
-    gameOverData = w;
-    if (w) draw(); // Força redesenho imediato
-});
-
-socket.on('youLost', () => {
-    youLost = true;
-});
-
-// ─── Botão Reiniciar ─────────────────────────────────────────────────────────
-function updateRestartButton() {
-    const btn = document.getElementById('restartBtn');
-    if (!btn) return;
-    btn.style.display = (role === 'p1' || role === 'p2') ? 'inline-block' : 'none';
-}
-
-document.getElementById('restartBtn')?.addEventListener('click', () => {
-    socket.emit('requestRestart');
-    gameOverData = null;
-});
-
-// ─── Overlay de papel ────────────────────────────────────────────────────────
-function updateRoleOverlay() {
-    const overlay = document.getElementById('roleOverlay');
-    if (!overlay) return;
-
-    if (role === 'p1') {
-        overlay.innerHTML = `<span class="role-badge p1-badge">⬅ JOGADOR 1</span>`;
-    } else if (role === 'p2') {
-        overlay.innerHTML = `<span class="role-badge p2-badge">JOGADOR 2 ➡</span>`;
-    } else {
-        overlay.innerHTML = `<span class="role-badge spec-badge">👁 ESPECTADOR</span>`;
+// ─── 3. LOOP DE RENDERIZAÇÃO (O "CORAÇÃO" VISUAL) ─────────────────────────────
+function renderLoop() {
+    // A. INTERPOLAÇÃO: Desliza o estado visual para o estado do servidor
+    if (stateDoServidor) {
+        clientState.p1.y = lerp(clientState.p1.y, stateDoServidor.p1.y, LERP_FACTOR);
+        clientState.p2.y = lerp(clientState.p2.y, stateDoServidor.p2.y, LERP_FACTOR);
+        clientState.ball.x = lerp(clientState.ball.x, stateDoServidor.ball.x, LERP_FACTOR);
+        clientState.ball.y = lerp(clientState.ball.y, stateDoServidor.ball.y, LERP_FACTOR);
     }
-}
 
-// ─── Desenho ──────────────────────────────────────────────────────────────────
-function draw() {
-    if (!stateDoServidor) return;
-
-    // Limpa
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // B. LIMPEZA E FUNDO
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Grade sutil de fundo
     drawGrid();
-
-    // Linha central
     drawCenterLine();
-
-    // Placar
     drawScore();
 
-    // Raquetes
-    drawPaddle(20,                 stateDoServidor.p1.y, 'p1');
-    drawPaddle(canvas.width - 30,  stateDoServidor.p2.y, 'p2');
+    // C. DESENHO DOS ELEMENTOS (Usando clientState para ser fluido)
+    drawPaddle(20, clientState.p1.y, 'p1');
+    drawPaddle(canvas.width - 30, clientState.p2.y, 'p2');
+    drawBall(clientState.ball.x, clientState.ball.y);
 
-    // Bola
-    drawBall();
-
-    // Flash de ponto
-    if (pointFlash) {
-        drawPointFlash();
-        pointFlash.timer--;
-        if (pointFlash.timer <= 0) pointFlash = null;
-    }
-
-    // HUD (ping, fila, velocidade)
+    // D. HUD E OVERLAYS
     drawHUD();
+    if (gameOverData) drawGameOver(gameOverData);
 
-    // Tela de Game Over
-    if (gameOverData) {
-        drawGameOver(gameOverData);
-    }
-
-    // Tela "aguardando jogador"
-    if (!gameOverData && stateDoServidor && (!stateDoServidor.p1 || !stateDoServidor.p2)) {
-        // servidor não envia flag de "waiting", mas podemos inferir se placar está zerado e bola parada
-    }
+    requestAnimationFrame(renderLoop);
 }
 
-// ─── Componentes visuais ─────────────────────────────────────────────────────
+// ─── 4. FUNÇÕES DE DESENHO ESPECIALIZADAS ─────────────────────────────────────
 
 function drawGrid() {
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 40) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
@@ -142,54 +90,37 @@ function drawGrid() {
 function drawCenterLine() {
     ctx.save();
     ctx.setLineDash([6, 10]);
-    ctx.lineWidth   = 2;
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, 0);
     ctx.lineTo(canvas.width / 2, canvas.height);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.restore();
 }
 
 function drawScore() {
     ctx.save();
-    ctx.font      = 'bold 56px "Courier New", monospace';
+    ctx.font = 'bold 56px "Courier New", monospace';
     ctx.textAlign = 'center';
-
-    // P1 score
-    const p1Color = role === 'p1' ? '#00ff88' : 'rgba(255,255,255,0.7)';
-    ctx.fillStyle = p1Color;
+    
+    ctx.fillStyle = role === 'p1' ? '#00ff88' : 'rgba(255,255,255,0.7)';
     ctx.fillText(score.p1, canvas.width / 2 - 80, 70);
-
-    // P2 score
-    const p2Color = role === 'p2' ? '#00ff88' : 'rgba(255,255,255,0.7)';
-    ctx.fillStyle = p2Color;
+    
+    ctx.fillStyle = role === 'p2' ? '#00ff88' : 'rgba(255,255,255,0.7)';
     ctx.fillText(score.p2, canvas.width / 2 + 80, 70);
-
-    // Separador
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = 'bold 40px "Courier New", monospace';
-    ctx.fillText(':', canvas.width / 2, 66);
-
     ctx.restore();
 }
 
 function drawPaddle(x, y, player) {
     ctx.save();
-
     const isMe = role === player;
-
-    // Sombra / glow
+    
+    // Efeito de brilho se for o jogador atual
     if (isMe) {
         ctx.shadowColor = '#00ff88';
-        ctx.shadowBlur  = 15;
-    } else {
-        ctx.shadowColor = 'rgba(255,255,255,0.3)';
-        ctx.shadowBlur  = 6;
+        ctx.shadowBlur = 15;
     }
 
-    // Corpo da raquete
     const gradient = ctx.createLinearGradient(x, y, x + PADDLE_WIDTH, y + PADDLE_HEIGHT);
     if (isMe) {
         gradient.addColorStop(0, '#00ff88');
@@ -200,138 +131,71 @@ function drawPaddle(x, y, player) {
     }
 
     ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.roundRect(x, y, PADDLE_WIDTH, PADDLE_HEIGHT, 3);
-    ctx.fill();
-
+    ctx.fillRect(x, y, PADDLE_WIDTH, PADDLE_HEIGHT);
     ctx.restore();
 }
 
-function drawBall() {
-    const bx = stateDoServidor.ball.x;
-    const by = stateDoServidor.ball.y;
-
+function drawBall(x, y) {
     ctx.save();
-
-    // Rastro (trail simples)
     const speedRatio = Math.min(ballSpeedDisplay / 12, 1);
-    ctx.shadowColor = `rgba(255, ${Math.floor(200 - speedRatio * 180)}, 0, 0.8)`;
-    ctx.shadowBlur  = 6 + speedRatio * 14;
-
-    // Cor muda conforme velocidade: branca → laranja → vermelha
-    const r = 255;
+    
+    // Cor muda de branco para vermelho conforme a velocidade
     const g = Math.floor(255 - speedRatio * 255);
-    const b = 0;
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillStyle = `rgb(255, ${g}, 0)`;
+    ctx.shadowColor = `rgba(255, ${g}, 0, 0.8)`;
+    ctx.shadowBlur = 6 + speedRatio * 14;
 
-    ctx.beginPath();
-    ctx.roundRect(bx, by, BALL_SIZE, BALL_SIZE, 2);
-    ctx.fill();
-
+    ctx.fillRect(x, y, BALL_SIZE, BALL_SIZE);
     ctx.restore();
 }
 
 function drawHUD() {
     ctx.save();
-    ctx.font      = '13px "Courier New", monospace';
-    ctx.textAlign = 'left';
+    ctx.font = '13px "Courier New", monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
 
-    // Ping
     const ping = typeof currentPing !== 'undefined' ? currentPing : 0;
-    const pingColor = ping < 50 ? '#00ff88' : ping < 120 ? '#ffcc00' : '#ff4444';
-    ctx.fillStyle = pingColor;
-    ctx.fillText(`PING ${ping}ms`, 10, canvas.height - 10);
+    ctx.fillText(`PING: ${ping}ms`, 10, canvas.height - 10);
+    ctx.fillText(`VEL: ${Math.round(ballSpeedDisplay * 10)}%`, 10, canvas.height - 25);
 
-    // Velocidade da bola
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    const speedPct = Math.round(((ballSpeedDisplay - 4) / (12 - 4)) * 100);
-    ctx.fillText(`VEL ${Math.max(0, speedPct)}%`, 10, canvas.height - 28);
-
-    // Posição na fila (espectadores)
     if (role === 'spectator' && specpos) {
         ctx.textAlign = 'right';
-        ctx.fillStyle = 'rgba(255, 200, 50, 0.7)';
-        ctx.font = '14px "Courier New", monospace';
-        ctx.fillText(`⏳ Fila: #${specpos}`, canvas.width - 10, canvas.height - 10);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(`⏳ FILA: #${specpos}`, canvas.width - 10, canvas.height - 10);
     }
-
     ctx.restore();
 }
 
 function drawGameOver(winnerKey) {
     ctx.save();
-
-    // Overlay escuro
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const isWinner = role === winnerKey;
-    const isLoser  = (role === 'p1' || role === 'p2') && !isWinner;
-
-    // Título principal
     ctx.textAlign = 'center';
-
+    const isWinner = role === winnerKey;
+    
     if (isWinner) {
         ctx.fillStyle = '#00ff88';
-        ctx.font      = 'bold 54px "Courier New", monospace';
-        ctx.shadowColor = '#00ff88';
-        ctx.shadowBlur  = 30;
-        ctx.fillText('VITÓRIA!', canvas.width / 2, canvas.height / 2 - 40);
-    } else if (isLoser) {
+        ctx.font = 'bold 50px Arial';
+        ctx.fillText('VITÓRIA!', canvas.width / 2, canvas.height / 2);
+    } else {
         ctx.fillStyle = '#ff4444';
-        ctx.font      = 'bold 54px "Courier New", monospace';
-        ctx.shadowColor = '#ff4444';
-        ctx.shadowBlur  = 30;
-        ctx.fillText('DERROTA', canvas.width / 2, canvas.height / 2 - 40);
-    } else {
-        // Espectador
-        const label = winnerKey === 'p1' ? 'JOGADOR 1' : 'JOGADOR 2';
-        ctx.fillStyle = '#ffffff';
-        ctx.font      = 'bold 38px "Courier New", monospace';
-        ctx.fillText(`${label} VENCEU!`, canvas.width / 2, canvas.height / 2 - 40);
+        ctx.font = 'bold 50px Arial';
+        ctx.fillText(role === 'spectator' ? 'FIM DE JOGO' : 'DERROTA', canvas.width / 2, canvas.height / 2);
     }
-
-    ctx.shadowBlur = 0;
-
-    // Placar final
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.font      = '22px "Courier New", monospace';
-    ctx.fillText(`${score.p1}  :  ${score.p2}`, canvas.width / 2, canvas.height / 2 + 10);
-
-    // Mensagem secundária
-    ctx.font      = '15px "Courier New", monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-
-    if (isLoser) {
-        ctx.fillText('Você entrou na fila de espera...', canvas.width / 2, canvas.height / 2 + 50);
-    } else if (isWinner) {
-        ctx.fillText('Aguardando próximo desafiante...', canvas.width / 2, canvas.height / 2 + 50);
-    } else {
-        ctx.fillText('Nova partida iniciando em breve...', canvas.width / 2, canvas.height / 2 + 50);
-    }
-
-    // Instrução de reiniciar (só para jogadores)
-    if (role === 'p1' || role === 'p2') {
-        ctx.fillStyle = 'rgba(0, 255, 136, 0.6)';
-        ctx.font      = '14px "Courier New", monospace';
-        ctx.fillText('[ Pressione R ou clique em REINICIAR ]', canvas.width / 2, canvas.height / 2 + 80);
-    }
-
     ctx.restore();
 }
 
-// ─── Teclado ─────────────────────────────────────────────────────────────────
+// ─── 5. CONTROLES E INICIALIZAÇÃO ─────────────────────────────────────────────
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         socket.emit('move', { key: e.key, isPressed: true });
     }
-    if (e.key === 'r' || e.key === 'R') {
-        if (role === 'p1' || role === 'p2') {
-            socket.emit('requestRestart');
-            gameOverData = null;
-        }
+    if (e.key.toLowerCase() === 'r' && (role === 'p1' || role === 'p2')) {
+        socket.emit('requestRestart');
+        gameOverData = null;
     }
 });
 
@@ -341,5 +205,5 @@ document.addEventListener('keyup', (e) => {
     }
 });
 
-// ─── Primeiro draw ────────────────────────────────────────────────────────────
-draw();
+// Inicia o Loop
+requestAnimationFrame(renderLoop);
